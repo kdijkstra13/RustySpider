@@ -1,24 +1,24 @@
 use std::error::Error;
 use std::io;
 use reqwest::header::{HeaderMap, USER_AGENT};
-use crate::modules::content::{Searchable};
-use serde::Deserialize;
+use crate::modules::content::Searchable;
+use serde::{Deserialize, Serialize};
 use url::Url;
 use scraper::{Html, Selector};
 use crate::modules::types::{Content, WebFile};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CrawlersConfigs {
     pub crawlers: Vec<CrawlersConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum CrawlersConfig {
     TwoStageWeb(TwoStageWeb),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TwoStageWeb {
     url: String,
     search_page: String,

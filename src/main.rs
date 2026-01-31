@@ -1,8 +1,7 @@
-mod modules;
-use crate::modules::content::{Searchable, Predictable};
-use crate::modules::serialize::{load_contents, load_crawlers, load_fetchers, save_contents};
+use spider::modules::content::{Searchable, Predictable};
+use spider::modules::serialize::{load_contents, load_crawlers, load_fetchers, save_contents};
 use std::error::Error;
-use crate::modules::crawlers::Crawler;
+use spider::modules::crawlers::Crawler;
 use simplelog::*;
 use std::fs::{File, OpenOptions};
 use log::{info, warn, error};

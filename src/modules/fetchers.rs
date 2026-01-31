@@ -2,21 +2,21 @@ use std::error::Error;
 use std::time::Duration;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, REFERER, USER_AGENT};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use crate::modules::types::{WebFile, WebResponse};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct FetchersConfigs {
     pub fetchers: Vec<FetchersConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum FetchersConfig {
     QBFetcher(QBFetcher),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct QBFetcher {
     url: String,
     add_url: String,

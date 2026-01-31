@@ -45,7 +45,7 @@ impl Predictable for Content {
 
 impl Searchable for Content {
     fn to_query(&self) -> Result<String, Box<dyn Error>> {
-        let result = format!("{}{} {}{:0digits$}{}{:0digits$}{}",
+        let result = format!("{} {} {}{:0digits$}{}{:0digits$} {}",
                             self.prefix,
                             self.title,
                             self.first_prefix, self.first,

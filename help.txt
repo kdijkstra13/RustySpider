@@ -7,7 +7,7 @@ Examples:
   spider -l ./RustySpider.log -c ./contents.toml -r ./crawlers.toml -f ./fetchers.toml
 
 Flags:
-  --log-file   Path to the log file (default: RustySpider.log)
+  --log-file   Path to the log file
   --contents   Path to contents TOML (default: ./contents.toml)
   --crawlers   Path to crawlers TOML (default: ./crawlers.toml)
   --fetchers   Path to fetchers TOML (default: ./fetchers.toml)

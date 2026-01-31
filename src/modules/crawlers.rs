@@ -91,10 +91,7 @@ impl Crawler for TwoStageWeb {
 
         // Return no magnet link if there were no results
         if url_strings.is_empty() {
-            return Ok(WebFile {
-                content: content.clone(),
-                link: "".to_string(),
-            });
+            return Err("Nothing found in first stage.".into());
         };
         let url_string = url_strings[0].clone();
 

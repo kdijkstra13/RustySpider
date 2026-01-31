@@ -112,4 +112,4 @@ http-client.private.env.json
 contents.toml
 fetchers.toml
 crawlers.toml
-RustySpider.log
+rusty_spider.log

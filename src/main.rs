@@ -6,7 +6,7 @@ use crate::modules::crawlers::Crawler;
 use simplelog::*;
 use std::fs::{File, OpenOptions};
 use log::{info, warn, error};
-use clap::Parser;
+use clap::{Parser, CommandFactory};
 
 #[derive(Parser)]
 #[command(
@@ -16,7 +16,7 @@ use clap::Parser;
     long_about = include_str!("../help.txt")
 )]
 struct Cli {
-    #[arg(short = 'l', long = "log-file", default_value = "RustySpider.log")]
+    #[arg(short = 'l', long = "log-file", required = true)]
     log_file: String,
 
     #[arg(short = 'c', long = "contents", default_value = "./contents.toml")]
@@ -44,6 +44,13 @@ fn init_logger(log_path: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    if std::env::args_os().len() == 1 {
+        let mut cmd = Cli::command();
+        cmd.print_long_help()?;
+        println!();
+        return Ok(());
+    }
+
     let cli = Cli::parse();
     init_logger(&cli.log_file)?;
 
@@ -64,11 +71,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                     continue;
                 }
             };
-            info!("Now downloading: {new_content}!");
+            info!("Now fetching: {new_content}!");
             let web_response = match fetchers[0].fetch(web_file) {
                 Ok(r) => r,
                 Err(e) => {
-                    error!("Cannot start download: {e}");
+                    error!("Cannot start: {e}");
                     continue;
                 }
             };

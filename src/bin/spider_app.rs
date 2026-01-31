@@ -844,6 +844,24 @@ fn index_html() -> String {
       }
     }
 
+    function entryLabel(kind, item, index) {
+      if (!item) {
+        return `${kind.slice(0, -1)} #${index + 1}`;
+      }
+      if (kind === "contents") {
+        const title = (item.title || "").trim();
+        const prefix = (item.prefix || "").trim();
+        if (title) return title;
+        if (prefix) return prefix;
+        return `content #${index + 1}`;
+      }
+      if (kind === "crawlers" || kind === "fetchers") {
+        const url = (item.url || "").trim();
+        if (url) return url;
+      }
+      return `${kind.slice(0, -1)} #${index + 1}`;
+    }
+
     function collectItem(kind, container, defaults) {
       const item = { ...defaults };
       const inputs = container.querySelectorAll(`input[data-kind="${kind}"]`);
@@ -917,6 +935,10 @@ fn index_html() -> String {
           showNotice("Saved entry.");
           render();
         } else if (action === "delete") {
+          const item = state[kind] ? state[kind][index] : null;
+          const label = entryLabel(kind, item, index);
+          const ok = window.confirm(`Delete ${label}? This cannot be undone.`);
+          if (!ok) return;
           const data = await apiSend(`/api/${kind}/${index}`, "DELETE", {});
           state[kind] = data;
           showNotice("Deleted entry.");

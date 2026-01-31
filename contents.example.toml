@@ -1,0 +1,18 @@
+# Specify the contents tables from which queries are constructed.
+[[content]]
+# Prefix for the query
+prefix = ""
+# Title of the query
+title = ""
+# Prefix of the first counter of the query
+first_prefix = ""
+# Current first counter which is updated automatically on a successful fetch
+first = 1
+# Prefix of the second counter of the query
+second_prefix = ""
+# Current second counter which is updated automatically on a successful fetch
+second = 2
+# Number of digits (prefixed with zeros)
+digits = 2
+# Postfix of the query
+postfix = ""

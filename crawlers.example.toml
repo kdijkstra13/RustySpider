@@ -1,0 +1,21 @@
+[[crawlers]]
+# Type of crawler. twostageweb first fetches results and the follows to find.
+type = "twostageweb"
+# The category
+categories = [""]
+# The name of the category GET param to use
+categories_get_name = ""
+# The url of the search engine.
+url = ""
+# The subpage to use for the search
+search_page = ""
+# The GET parameter name to which the query gets passed.
+search_get_name = ""
+# The user agent to use
+user_agent = "Mozilla/5.0 (compatible; RustySpider/1.0; +https://example.com)"
+# Limit results
+limit = 10
+# A first stage pattern matcher string
+first_stage_match = ''
+# A second stage pattern matcher string
+second_stage_match = ''

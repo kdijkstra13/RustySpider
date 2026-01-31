@@ -1,0 +1,19 @@
+RustySpider finds contents using crawlers and then fetches. It logs progress to a file.
+
+Examples:
+  spider
+  spider --log-file ./RustySpider.log --contents ./contents.toml \
+         --crawlers ./crawlers.toml --fetchers ./fetchers.toml
+  spider -l ./RustySpider.log -c ./contents.toml -r ./crawlers.toml -f ./fetchers.toml
+
+Flags:
+  --log-file   Path to the log file (default: RustySpider.log)
+  --contents   Path to contents TOML (default: ./contents.toml)
+  --crawlers   Path to crawlers TOML (default: ./crawlers.toml)
+  --fetchers   Path to fetchers TOML (default: ./fetchers.toml)
+
+Short flags:
+  -l  Log file path
+  -c  Contents TOML path
+  -r  Crawlers TOML path
+  -f  Fetchers TOML path

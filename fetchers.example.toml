@@ -1,0 +1,15 @@
+[[fetchers]]
+# Passes results to a fetcher of this type.
+type = "qbfetcher"
+# Url to use
+url = ""
+# API call for adding
+add_url = ""
+# API call for login
+login_url = ""
+# User name
+username= ""
+# Password
+password = ""
+# Local save path
+save_path = ""

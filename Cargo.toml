@@ -1,0 +1,15 @@
+[package]
+name = "spider"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.9.11"
+scraper = { version = "0.20" }
+reqwest = { version = "0.13", features = ["blocking", "cookies", "form"] }
+url = {version = "1", url = "1" }
+derive_more = { version = "2.1.1", features = ["full"]}
+log = "0.4"
+simplelog = "0.12"
+clap = { version = "4.5.31", features = ["derive"] }

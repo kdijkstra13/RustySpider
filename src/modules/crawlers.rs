@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::io;
+use log::info;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use crate::modules::content::Searchable;
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,8 @@ impl Crawler for TwoStageWeb {
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, self.user_agent.parse()?);
 
+        info!("Crawler fetches first stage url: {}", &url);
+
         // Get result
         let html = reqwest::blocking::Client::new()
             .get(url.as_str())
@@ -94,6 +97,7 @@ impl Crawler for TwoStageWeb {
             return Err("Nothing found in first stage.".into());
         };
         let url_string = url_strings[0].clone();
+        info!("Crawler fetches second stage url: {}", &url_string);
 
         // Create header
         let mut headers = HeaderMap::new();
@@ -124,6 +128,8 @@ impl Crawler for TwoStageWeb {
         if link == "" {
             return Err("Search string not found".into())
         }
+
+        info!("Crawler found link: {:.35}...", &link);
         Ok(WebFile {content: content.clone(), link: link})
     }
 }

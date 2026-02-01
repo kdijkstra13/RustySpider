@@ -1,11 +1,10 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
-use axum::routing::{delete, get, post, put};
+use axum::routing::{get, put};
 use axum::Json;
 use axum::Router;
 use clap::{CommandFactory, Parser};
-use serde::Serialize;
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -620,6 +619,8 @@ fn index_html() -> String {
     const panelBody = document.getElementById("panel-body");
     const panelTitle = document.getElementById("panel-title");
     const panelSubtitle = document.getElementById("panel-subtitle");
+    let logTimer = null;
+    let autoScrollEnabled = true;
     const state = {
       contents: [],
       crawlers: [],
@@ -731,11 +732,68 @@ fn index_html() -> String {
       state.log = await fetchLog();
     }
 
+    function scrollLogToBottom() {
+      const box = document.getElementById("log-box");
+      if (!box) return;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function isNearLogBottom(box) {
+      const threshold = 12;
+      return box.scrollHeight - box.scrollTop - box.clientHeight <= threshold;
+    }
+
+    function attachLogBoxHandlers() {
+      const box = document.getElementById("log-box");
+      if (!box) return;
+      box.addEventListener("scroll", () => {
+        autoScrollEnabled = isNearLogBottom(box);
+      });
+      if (autoScrollEnabled) {
+        scrollLogToBottom();
+      }
+    }
+
+    function startLogPolling() {
+      if (logTimer) return;
+      logTimer = setInterval(async () => {
+        if (state.tab !== "log") return;
+        const next = await fetchLog();
+        if (next !== state.log) {
+          state.log = next;
+          const box = document.getElementById("log-box");
+          if (box) {
+            box.textContent = state.log || "No log entries yet.";
+            if (autoScrollEnabled) {
+              scrollLogToBottom();
+            }
+          } else {
+            render();
+          }
+        } else {
+          if (autoScrollEnabled) {
+            scrollLogToBottom();
+          }
+        }
+      }, 3000);
+    }
+
+    function stopLogPolling() {
+      if (!logTimer) return;
+      clearInterval(logTimer);
+      logTimer = null;
+    }
+
     function setTab(tab) {
       state.tab = tab;
       document.querySelectorAll(".tab").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.tab === tab);
       });
+      if (tab === "log") {
+        startLogPolling();
+      } else {
+        stopLogPolling();
+      }
       render();
     }
 
@@ -841,6 +899,7 @@ fn index_html() -> String {
         panelTitle.textContent = "Log";
         panelSubtitle.textContent = "View rusty_spider.log";
         panelBody.innerHTML = renderLog();
+        attachLogBoxHandlers();
       }
     }
 

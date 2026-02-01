@@ -1,10 +1,9 @@
-use spider::modules::content::{Searchable, Predictable};
+use spider::modules::content::{Predictable};
 use spider::modules::serialize::{load_contents, load_crawlers, load_fetchers, save_contents};
 use std::error::Error;
-use spider::modules::crawlers::Crawler;
 use simplelog::*;
-use std::fs::{File, OpenOptions};
-use log::{info, warn, error};
+use std::fs::{OpenOptions};
+use log::{info, error};
 use clap::{Parser, CommandFactory};
 
 #[derive(Parser)]
@@ -66,7 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let web_file = match crawlers[0].find(new_content.clone()) {
                 Ok(f) => f,
                 Err(e) => {
-                    error!("Content not found: {e}");
+                    error!("Not found, crawler reports: {e}");
                     continue;
                 }
             };
@@ -74,15 +73,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             let web_response = match fetchers[0].fetch(web_file) {
                 Ok(r) => r,
                 Err(e) => {
-                    error!("Cannot start: {e}");
+                    error!("Cannot start, fetcher reports: {e}");
                     continue;
                 }
             };
-
             info!("Done: {web_response}");
 
             contents[i] = new_content;
-            save_contents(&cli.contents, &contents);
+            save_contents(&cli.contents, &contents)?;
             break;
         }
     }

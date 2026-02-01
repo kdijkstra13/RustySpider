@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone, Display, Serialize)]
 #[display(
-    "{prefix}{title} {first_prefix}{first:0digits$} {second_prefix}{second:0digits$}{postfix}"
+    "{prefix} {title} {first_prefix}{first:0digits$}{second_prefix}{second:0digits$} {postfix}"
 )]
 pub struct Content {
     pub(crate) prefix: String,
@@ -17,7 +17,7 @@ pub struct Content {
 }
 
 #[derive(Debug, Deserialize, Clone, Display, Serialize)]
-#[display("{content} -> {link:.15}...")]
+#[display("{content} -> {link:.35}...")]
 pub struct WebFile {
     pub(crate) content: Content,
     pub(crate) link: String,

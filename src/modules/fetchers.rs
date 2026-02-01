@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::time::Duration;
+use log::info;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,7 @@ impl Fetcher for QBFetcher {
                                            &content.link,
                                            &format!("{0}{1}", self.save_path, content.content.title))?;
         result.success = result.response == "Ok.";
+        info!("Fetcher response was: {}", &result.response);
         Ok(result)
     }
 }
@@ -91,7 +93,7 @@ pub fn add_url_blocking(
 
     let add_url = format!("{url}{add_url}");
     let add_resp = client
-        .post(add_url)
+        .post(add_url.clone())
         .headers(headers)
         .form(&[
             ("urls", link),
@@ -100,6 +102,10 @@ pub fn add_url_blocking(
         .send()?
         .error_for_status()?
         .text()?;
-
-    Ok(add_resp)
+    info!("Fetcher has executed url: {}", &add_url);
+    if add_resp == "Ok." {
+        Ok(add_resp)
+    } else {
+        Err(add_resp.into())
+    }
 }

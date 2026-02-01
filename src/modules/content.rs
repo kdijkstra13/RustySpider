@@ -1,4 +1,5 @@
 use std::error::Error;
+use log::info;
 use crate::modules::types::Content;
 
 pub trait Searchable {
@@ -45,13 +46,24 @@ impl Predictable for Content {
 
 impl Searchable for Content {
     fn to_query(&self) -> Result<String, Box<dyn Error>> {
-        let result = format!("{} {} {}{:0digits$}{}{:0digits$} {}",
-                            self.prefix,
+        let pref = if self.prefix.is_empty() {
+            String::new()
+        } else {
+            format!("{} ", self.prefix)
+        };
+        let posf = if self.postfix.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", self.postfix)
+        };
+        let result = format!("{}{} {}{:0digits$}{}{:0digits$}{}",
+                            pref,
                             self.title,
                             self.first_prefix, self.first,
                             self.second_prefix, self.second,
-                            self.postfix,
+                            posf,
                             digits=self.digits);
+        info!("Content has created query: {}", &result);
         Ok(result)
     }
 }

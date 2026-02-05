@@ -9,6 +9,7 @@ use std::env;
 use std::fs;
 use std::net::SocketAddr;
 use std::path::{Path as FsPath, PathBuf};
+use std::process::Command as StdCommand;
 use spider::modules::crawlers::{CrawlersConfig, CrawlersConfigs};
 use spider::modules::fetchers::{FetchersConfig, FetchersConfigs};
 use spider::modules::serialize::{
@@ -20,6 +21,7 @@ use spider::modules::serialize::{
     save_crawlers,
     save_fetchers,
     save_contents,
+    save_spider_run_config,
     SpiderRunConfig,
 };
 use spider::modules::types::Content;
@@ -99,6 +101,7 @@ async fn main() {
             "/api/fetchers/:idx",
             put(update_fetcher).delete(delete_fetcher),
         )
+        .route("/api/spider-config", get(get_spider_config).put(update_spider_config))
         .route("/api/run", axum::routing::post(run_spider))
         .route("/api/log", get(get_log))
         .with_state(state);
@@ -258,9 +261,22 @@ async fn get_log(State(state): State<AppState>) -> Result<String, ApiError> {
     Ok(limit_tail(&text, 20000))
 }
 
+async fn get_spider_config(State(state): State<AppState>) -> Result<Json<SpiderRunConfig>, ApiError> {
+    let config = read_spider_config(&state.spider_config_path)?;
+    Ok(Json(config))
+}
+
+async fn update_spider_config(
+    State(state): State<AppState>,
+    Json(payload): Json<SpiderRunConfig>,
+) -> Result<Json<SpiderRunConfig>, ApiError> {
+    write_spider_config(&state.spider_config_path, &payload)?;
+    Ok(Json(payload))
+}
+
 async fn run_spider(State(state): State<AppState>) -> Result<Json<RunResponse>, ApiError> {
     let config = read_spider_config(&state.spider_config_path)?;
-    let mut cmd = tokio::process::Command::new(&config.spider_executable);
+    let mut cmd = StdCommand::new(&config.spider_executable);
     cmd.arg("-l")
         .arg(&config.log_file)
         .arg("-c")
@@ -270,12 +286,8 @@ async fn run_spider(State(state): State<AppState>) -> Result<Json<RunResponse>, 
         .arg("-f")
         .arg(&config.fetchers);
 
-    let mut child = cmd
-        .spawn()
+    cmd.spawn()
         .map_err(|err| ApiError::internal(format!("failed to start spider: {err}")))?;
-    tokio::spawn(async move {
-        let _ = child.wait().await;
-    });
 
     Ok(Json(RunResponse {
         status: "started".to_string(),
@@ -352,6 +364,14 @@ fn read_spider_config(path: &FsPath) -> Result<SpiderRunConfig, ApiError> {
         Err(err) if is_not_found(&err) => Err(ApiError::not_found("spider config not found")),
         Err(err) => Err(ApiError::internal(err.to_string())),
     }
+}
+
+fn write_spider_config(path: &FsPath, config: &SpiderRunConfig) -> Result<(), ApiError> {
+    save_spider_run_config(
+        path.to_str().ok_or_else(|| ApiError::internal("invalid spider config path".to_string()))?,
+        config,
+    )
+    .map_err(|err| ApiError::internal(err.to_string()))
 }
 
 fn is_not_found(err: &Box<dyn std::error::Error>) -> bool {
@@ -680,6 +700,7 @@ fn index_html() -> String {
       contents: [],
       crawlers: [],
       fetchers: [],
+      spiderConfig: null,
       log: "",
       tab: "contents",
       advancedTab: "crawlers"
@@ -714,6 +735,13 @@ fn index_html() -> String {
         { name: "username", label: "Username", type: "text" },
         { name: "password", label: "Password", type: "password" },
         { name: "save_path", label: "Save path", type: "text" }
+      ],
+      spider: [
+        { name: "spider_executable", label: "Spider executable", type: "text" },
+        { name: "contents", label: "Contents file", type: "text" },
+        { name: "crawlers", label: "Crawlers file", type: "text" },
+        { name: "fetchers", label: "Fetchers file", type: "text" },
+        { name: "log_file", label: "Log file", type: "text" }
       ]
     };
 
@@ -748,6 +776,13 @@ fn index_html() -> String {
         username: "",
         password: "",
         save_path: ""
+      },
+      spider: {
+        spider_executable: "",
+        contents: "",
+        crawlers: "",
+        fetchers: "",
+        log_file: ""
       }
     };
 
@@ -784,6 +819,7 @@ fn index_html() -> String {
       state.contents = await apiGet("/api/contents");
       state.crawlers = await apiGet("/api/crawlers");
       state.fetchers = await apiGet("/api/fetchers");
+      state.spiderConfig = await apiGet("/api/spider-config");
       state.log = await fetchLog();
     }
 
@@ -931,6 +967,33 @@ fn index_html() -> String {
       `;
     }
 
+    function renderSpiderConfig() {
+      if (!state.spiderConfig) {
+        return `<div class="card"><h3>No config loaded</h3><p>Check spider.toml path.</p></div>`;
+      }
+      const fields = schemas.spider
+        .map(field => {
+          const value = fieldValue(state.spiderConfig, field.name);
+          const type = field.type || "text";
+          return `
+            <div class="field">
+              <label>${field.label}</label>
+              <input data-field="${field.name}" data-kind="spider" type="${type}" value="${escapeHtml(value)}" />
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <div class="card">
+          <h3>spider.toml</h3>
+          <div class="fields">${fields}</div>
+          <div class="actions">
+            <button class="btn" data-action="save" data-kind="spider">Save</button>
+          </div>
+        </div>
+      `;
+    }
+
     function render() {
       if (state.tab === "contents") {
         panelTitle.textContent = "Contents";
@@ -943,11 +1006,14 @@ fn index_html() -> String {
           <div class="tabs" id="advanced-tabs">
             <button class="tab ${state.advancedTab === "crawlers" ? "active" : ""}" data-advanced="crawlers">Crawlers</button>
             <button class="tab ${state.advancedTab === "fetchers" ? "active" : ""}" data-advanced="fetchers">Fetchers</button>
+            <button class="tab ${state.advancedTab === "spider" ? "active" : ""}" data-advanced="spider">Spider</button>
           </div>
           <div class="grid">
             ${state.advancedTab === "crawlers"
               ? `${renderEntries(state.crawlers, "crawlers")}${renderAddCard("crawlers")}`
-              : `${renderEntries(state.fetchers, "fetchers")}${renderAddCard("fetchers")}`
+              : state.advancedTab === "fetchers"
+                ? `${renderEntries(state.fetchers, "fetchers")}${renderAddCard("fetchers")}`
+                : `${renderSpiderConfig()}`
             }
           </div>
         `;
@@ -1041,12 +1107,16 @@ fn index_html() -> String {
       try {
         if (action === "save") {
           const card = button.closest(".card");
-          const payload = collectItem(kind, card, templates[kind]);
+          const payload = collectItem(kind, card, templates[kind] || {});
           if (kind === "crawlers" || kind === "fetchers") {
             payload.type = templates[kind].type;
           }
-          const data = await apiSend(`/api/${kind}/${index}`, "PUT", payload);
-          state[kind] = data;
+          if (kind === "spider") {
+            state.spiderConfig = await apiSend(`/api/spider-config`, "PUT", payload);
+          } else {
+            const data = await apiSend(`/api/${kind}/${index}`, "PUT", payload);
+            state[kind] = data;
+          }
           showNotice("Saved entry.");
           render();
         } else if (action === "delete") {
@@ -1076,12 +1146,14 @@ fn index_html() -> String {
         } else if (action === "run-spider") {
           const res = await fetch("/api/run", { method: "POST" });
           if (!res.ok) {
-            throw new Error(await res.text());
+            const message = await res.text();
+            throw new Error(message || "Failed to start spider.");
           }
           showNotice("Spider run started.");
         }
       } catch (err) {
-        showNotice(err.message || "Request failed.", true);
+        const message = err && err.message ? `Run failed: ${err.message}` : "Run failed.";
+        showNotice(message, true);
       }
     });
 

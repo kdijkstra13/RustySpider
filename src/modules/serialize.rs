@@ -102,3 +102,12 @@ pub fn load_spider_run_config(path: &str) -> Result<SpiderRunConfig, Box<dyn std
     let config: SpiderRunConfig = toml::from_str(&text)?;
     Ok(config)
 }
+
+pub fn save_spider_run_config(
+    path: &str,
+    config: &SpiderRunConfig,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let toml_str = toml::to_string_pretty(config)?;
+    fs::write(path, toml_str)?;
+    Ok(())
+}

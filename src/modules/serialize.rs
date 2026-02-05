@@ -87,3 +87,18 @@ pub fn load_fetchers_file(path: &str) -> Result<FetchersConfigs, Box<dyn std::er
     let file: FetchersConfigs = toml::from_str(&text)?;
     Ok(file)
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SpiderRunConfig {
+    pub spider_executable: String,
+    pub contents: String,
+    pub crawlers: String,
+    pub fetchers: String,
+    pub log_file: String,
+}
+
+pub fn load_spider_run_config(path: &str) -> Result<SpiderRunConfig, Box<dyn std::error::Error>> {
+    let text = fs::read_to_string(path)?;
+    let config: SpiderRunConfig = toml::from_str(&text)?;
+    Ok(config)
+}

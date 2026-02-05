@@ -16,9 +16,11 @@ use spider::modules::serialize::{
     load_contents_file,
     load_crawlers_file,
     load_fetchers_file,
+    load_spider_run_config,
     save_crawlers,
     save_fetchers,
     save_contents,
+    SpiderRunConfig,
 };
 use spider::modules::types::Content;
 
@@ -28,6 +30,7 @@ struct AppState {
     crawlers_path: PathBuf,
     fetchers_path: PathBuf,
     log_path: PathBuf,
+    spider_config_path: PathBuf,
 }
 
 #[derive(Parser)]
@@ -49,6 +52,16 @@ struct Cli {
 
     #[arg(short = 'f', long = "fetchers", default_value = "./fetchers.toml")]
     fetchers: String,
+
+    #[arg(
+        short = 's',
+        long = "spider-toml",
+        alias = "spider-config",
+        value_name = "FILE",
+        help = "Path to spider.toml run configuration",
+        default_value = "./spider.toml"
+    )]
+    spider_config: String,
 }
 
 #[tokio::main]
@@ -66,6 +79,7 @@ async fn main() {
         crawlers_path: PathBuf::from(cli.crawlers),
         fetchers_path: PathBuf::from(cli.fetchers),
         log_path: PathBuf::from(cli.log_file),
+        spider_config_path: PathBuf::from(cli.spider_config),
     };
 
     let app = Router::new()
@@ -85,6 +99,7 @@ async fn main() {
             "/api/fetchers/:idx",
             put(update_fetcher).delete(delete_fetcher),
         )
+        .route("/api/run", axum::routing::post(run_spider))
         .route("/api/log", get(get_log))
         .with_state(state);
 
@@ -243,6 +258,30 @@ async fn get_log(State(state): State<AppState>) -> Result<String, ApiError> {
     Ok(limit_tail(&text, 20000))
 }
 
+async fn run_spider(State(state): State<AppState>) -> Result<Json<RunResponse>, ApiError> {
+    let config = read_spider_config(&state.spider_config_path)?;
+    let mut cmd = tokio::process::Command::new(&config.spider_executable);
+    cmd.arg("-l")
+        .arg(&config.log_file)
+        .arg("-c")
+        .arg(&config.contents)
+        .arg("-r")
+        .arg(&config.crawlers)
+        .arg("-f")
+        .arg(&config.fetchers);
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|err| ApiError::internal(format!("failed to start spider: {err}")))?;
+    tokio::spawn(async move {
+        let _ = child.wait().await;
+    });
+
+    Ok(Json(RunResponse {
+        status: "started".to_string(),
+    }))
+}
+
 fn write_crawlers(path: &FsPath, data: &CrawlersConfigs) -> Result<(), ApiError> {
     save_crawlers(
         path.to_str().ok_or_else(|| ApiError::internal("invalid crawlers path".to_string()))?,
@@ -304,6 +343,17 @@ fn read_fetchers(path: &FsPath) -> Result<FetchersConfigs, ApiError> {
     }
 }
 
+fn read_spider_config(path: &FsPath) -> Result<SpiderRunConfig, ApiError> {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| ApiError::internal("invalid spider config path".to_string()))?;
+    match load_spider_run_config(path_str) {
+        Ok(config) => Ok(config),
+        Err(err) if is_not_found(&err) => Err(ApiError::not_found("spider config not found")),
+        Err(err) => Err(ApiError::internal(err.to_string())),
+    }
+}
+
 fn is_not_found(err: &Box<dyn std::error::Error>) -> bool {
     err.downcast_ref::<std::io::Error>()
         .map(|io_err| io_err.kind() == std::io::ErrorKind::NotFound)
@@ -322,6 +372,11 @@ fn limit_tail(text: &str, max_chars: usize) -> String {
 struct ApiError {
     code: StatusCode,
     message: String,
+}
+
+#[derive(serde::Serialize)]
+struct RunResponse {
+    status: String,
 }
 
 impl ApiError {
@@ -868,6 +923,7 @@ fn index_html() -> String {
       return `
         <div class="card">
           <div class="actions">
+            <button class="btn secondary" data-action="run-spider">Run spider</button>
             <button class="btn" data-action="refresh-log">Refresh log</button>
           </div>
           <div class="log-box" id="log-box">${escapeHtml(state.log || "No log entries yet.")}</div>
@@ -1017,6 +1073,12 @@ fn index_html() -> String {
         } else if (action === "refresh-log") {
           state.log = await fetchLog();
           render();
+        } else if (action === "run-spider") {
+          const res = await fetch("/api/run", { method: "POST" });
+          if (!res.ok) {
+            throw new Error(await res.text());
+          }
+          showNotice("Spider run started.");
         }
       } catch (err) {
         showNotice(err.message || "Request failed.", true);

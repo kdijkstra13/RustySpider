@@ -43,25 +43,9 @@ struct AppState {
     long_about = None
 )]
 struct Cli {
-    #[arg(short = 'l', long = "log-file", required = true)]
-    log_file: String,
-
-    #[arg(short = 'c', long = "contents", default_value = "./contents.toml")]
-    contents: String,
-
-    #[arg(short = 'r', long = "crawlers", default_value = "./crawlers.toml")]
-    crawlers: String,
-
-    #[arg(short = 'f', long = "fetchers", default_value = "./fetchers.toml")]
-    fetchers: String,
-
     #[arg(
-        short = 's',
-        long = "spider-toml",
-        alias = "spider-config",
-        value_name = "FILE",
+        value_name = "SPIDER_TOML",
         help = "Path to spider.toml run configuration",
-        default_value = "./spider.toml"
     )]
     spider_config: String,
 }
@@ -76,12 +60,20 @@ async fn main() {
     }
 
     let cli = Cli::parse();
+    let spider_config_path = PathBuf::from(cli.spider_config);
+    let config = match read_spider_config(&spider_config_path) {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("Failed to load spider config: {}", err.message);
+            return;
+        }
+    };
     let state = AppState {
-        contents_path: PathBuf::from(cli.contents),
-        crawlers_path: PathBuf::from(cli.crawlers),
-        fetchers_path: PathBuf::from(cli.fetchers),
-        log_path: PathBuf::from(cli.log_file),
-        spider_config_path: PathBuf::from(cli.spider_config),
+        contents_path: PathBuf::from(config.contents),
+        crawlers_path: PathBuf::from(config.crawlers),
+        fetchers_path: PathBuf::from(config.fetchers),
+        log_path: PathBuf::from(config.log_file),
+        spider_config_path,
     };
 
     let app = Router::new()
@@ -725,6 +717,7 @@ fn index_html() -> String {
         { name: "categories_get_name", label: "Category param", type: "text" },
         { name: "user_agent", label: "User agent", type: "text" },
         { name: "limit", label: "Limit", type: "number" },
+        { name: "wait", label: "Wait (seconds)", type: "number" },
         { name: "first_stage_match", label: "First stage selector", type: "text" },
         { name: "second_stage_match", label: "Second stage selector", type: "text" }
       ],
@@ -765,6 +758,7 @@ fn index_html() -> String {
         categories_get_name: "category[]",
         user_agent: "Mozilla/5.0 (compatible; RustySpider/1.0)",
         limit: 10,
+        wait: 5,
         first_stage_match: "",
         second_stage_match: ""
       },

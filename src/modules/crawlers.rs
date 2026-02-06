@@ -1,5 +1,7 @@
 use std::error::Error;
 use std::io;
+use std::thread::sleep;
+use std::time::Duration;
 use log::info;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use crate::modules::content::Searchable;
@@ -29,7 +31,8 @@ pub struct TwoStageWeb {
     user_agent: String,
     limit: u32,
     first_stage_match: String,
-    second_stage_match: String
+    second_stage_match: String,
+    wait: u64,
 }
 
 pub trait Crawler {
@@ -58,14 +61,17 @@ impl Crawler for TwoStageWeb {
         let mut url = Url::parse(&self.url)?.join(&self.search_page)?;
         let query = content.to_query()?;
         url.query_pairs_mut().append_pair(&self.search_get_name, &query);
-        for category in &self.categories {
-            url.query_pairs_mut().append_pair(&self.categories_get_name, &category);
+        if !&self.categories_get_name.is_empty() {
+            for category in &self.categories {
+                url.query_pairs_mut().append_pair(&self.categories_get_name, &category);
+            }
         }
 
         // Create header
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, self.user_agent.parse()?);
 
+        sleep(Duration::from_secs(self.wait));
         info!("Crawler fetches first stage url: {}", &url);
 
         // Get result
@@ -97,6 +103,7 @@ impl Crawler for TwoStageWeb {
             return Err("Nothing found in first stage.".into());
         };
         let url_string = url_strings[0].clone();
+        sleep(Duration::from_secs(self.wait));
         info!("Crawler fetches second stage url: {}", &url_string);
 
         // Create header

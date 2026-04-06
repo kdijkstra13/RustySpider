@@ -102,7 +102,7 @@ pub fn add_url_blocking(
         .send()?
         .error_for_status()?
         .text()?;
-    info!("Fetcher has executed url: {}", &add_url);
+    info!("Fetcher has executed url: {}, with path: {}", &add_url, &save_path);
     if add_resp == "Ok." {
         Ok(add_resp)
     } else {

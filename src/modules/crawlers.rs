@@ -39,8 +39,13 @@ pub trait Crawler {
     fn find(&self, content: Content) -> Result<WebFile, Box<dyn Error>>;
 }
 
-fn filter_by_keywords(items: &[String], keywords: &str) -> Result<Vec<String>, Box<dyn Error>> {
+fn filter_by_keywords(items: &[String], keywords: &str, keywords_neg: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let words: Vec<String> = keywords
+        .split_whitespace()
+        .map(|w| w.to_lowercase())
+        .collect();
+
+    let neg_words: Vec<String> = keywords_neg
         .split_whitespace()
         .map(|w| w.to_lowercase())
         .collect();
@@ -48,7 +53,10 @@ fn filter_by_keywords(items: &[String], keywords: &str) -> Result<Vec<String>, B
     let filtered = items
         .iter()
         .filter(|s| {
-            words.iter().all(|w| s.contains(w))
+            let s_lower = s.to_lowercase();
+            let has_all_keywords = words.iter().all(|w| s_lower.contains(w));
+            let has_no_neg_keywords = neg_words.iter().all(|w| !s_lower.contains(w));
+            has_all_keywords && has_no_neg_keywords
         })
         .cloned()
         .collect();
@@ -94,9 +102,11 @@ impl Crawler for TwoStageWeb {
                 }
             }
         }
-
-        // Double check with keywords
-        let url_strings = filter_by_keywords(&url_strings, &query)?;
+        // Double check with keywords (also filter with negative keywords)
+        let negative = content.to_negative()?;
+        let before_url_strings = url_strings.clone();
+        let url_strings = filter_by_keywords(&url_strings, &query, &negative)?;
+        info!("Before filtering: {}, after filtering: {}, with -'{}' and +'{}'", &before_url_strings.len(), &url_strings.len(), &negative, &query);
 
         // Return no magnet link if there were no results
         if url_strings.is_empty() {
@@ -133,7 +143,7 @@ impl Crawler for TwoStageWeb {
             }
         }
         if link == "" {
-            return Err("Search string not found".into())
+            return Err("Search string not found (or filtered)".into())
         }
 
         info!("Crawler found link: {:.35}...", &link);

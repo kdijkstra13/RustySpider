@@ -700,8 +700,8 @@ fn index_html() -> String {
 
     const schemas = {
       contents: [
-        { name: "prefix", label: "Prefix", type: "text" },
         { name: "title", label: "Title", type: "text" },
+        { name: "negative", label: "Negative", type: "text" },
         { name: "first_prefix", label: "First prefix", type: "text" },
         { name: "first", label: "First", type: "number" },
         { name: "second_prefix", label: "Second prefix", type: "text" },
@@ -740,8 +740,8 @@ fn index_html() -> String {
 
     const templates = {
       contents: {
-        prefix: "",
         title: "",
+        negative: "",
         first_prefix: "S",
         first: 0,
         second_prefix: "E",
@@ -1025,9 +1025,9 @@ fn index_html() -> String {
       }
       if (kind === "contents") {
         const title = (item.title || "").trim();
-        const prefix = (item.prefix || "").trim();
+        const negative = (item.negative || "").trim();
         if (title) return title;
-        if (prefix) return prefix;
+        if (negative) return negative;
         return `content #${index + 1}`;
       }
       if (kind === "crawlers" || kind === "fetchers") {

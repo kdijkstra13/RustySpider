@@ -4,6 +4,7 @@ use crate::modules::types::Content;
 
 pub trait Searchable {
     fn to_query(&self) -> Result<String, Box<dyn Error>>;
+    fn to_negative(&self) -> Result<String, Box<dyn Error>>;
 }
 
 pub trait Predictable {
@@ -11,8 +12,8 @@ pub trait Predictable {
 }
 
 impl Content {
-    pub fn new(prefix: impl Into<String>,
-               title:  impl Into<String>,
+    pub fn new(title:  impl Into<String>,
+               negative: impl Into<String>,
                first_prefix: impl Into<String>,
                first: u32,
                second_prefix: impl Into<String>,
@@ -20,8 +21,8 @@ impl Content {
                digits: usize,
                postfix:  impl Into<String>) -> Self {
         Self {
-            prefix: prefix.into(),
             title: title.into(),
+            negative: negative.into(),
             first_prefix: first_prefix.into(),
             first,
             second_prefix: second_prefix.into(),
@@ -46,18 +47,12 @@ impl Predictable for Content {
 
 impl Searchable for Content {
     fn to_query(&self) -> Result<String, Box<dyn Error>> {
-        let pref = if self.prefix.is_empty() {
-            String::new()
-        } else {
-            format!("{} ", self.prefix)
-        };
         let posf = if self.postfix.is_empty() {
             String::new()
         } else {
             format!(" {}", self.postfix)
         };
-        let result = format!("{}{} {}{:0digits$}{}{:0digits$}{}",
-                            pref,
+        let result = format!("{} {}{:0digits$}{}{:0digits$}{}",
                             self.title,
                             self.first_prefix, self.first,
                             self.second_prefix, self.second,
@@ -66,4 +61,11 @@ impl Searchable for Content {
         info!("Content has created query: {}", &result);
         Ok(result)
     }
+
+    fn to_negative(&self) -> Result<String, Box<dyn Error>> {
+        let result = self.negative.clone();
+        info!("Content has created negative: {}", &result);
+        Ok(result)
+    }
+
 }

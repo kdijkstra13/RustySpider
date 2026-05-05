@@ -702,6 +702,7 @@ fn index_html() -> String {
       contents: [
         { name: "title", label: "Title", type: "text" },
         { name: "negative", label: "Negative", type: "text" },
+        { name: "regexp", label: "Regexp", type: "text" },
         { name: "first_prefix", label: "First prefix", type: "text" },
         { name: "first", label: "First", type: "number" },
         { name: "second_prefix", label: "Second prefix", type: "text" },
@@ -742,6 +743,7 @@ fn index_html() -> String {
       contents: {
         title: "",
         negative: "",
+        regexp: "",
         first_prefix: "S",
         first: 0,
         second_prefix: "E",

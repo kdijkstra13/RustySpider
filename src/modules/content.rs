@@ -5,6 +5,7 @@ use crate::modules::types::Content;
 pub trait Searchable {
     fn to_query(&self) -> Result<String, Box<dyn Error>>;
     fn to_negative(&self) -> Result<String, Box<dyn Error>>;
+    fn to_regexp(&self) -> Result<String, Box<dyn Error>>;
 }
 
 pub trait Predictable {
@@ -14,6 +15,7 @@ pub trait Predictable {
 impl Content {
     pub fn new(title:  impl Into<String>,
                negative: impl Into<String>,
+               regexp: impl Into<String>,
                first_prefix: impl Into<String>,
                first: u32,
                second_prefix: impl Into<String>,
@@ -23,6 +25,7 @@ impl Content {
         Self {
             title: title.into(),
             negative: negative.into(),
+            regexp: regexp.into(),
             first_prefix: first_prefix.into(),
             first,
             second_prefix: second_prefix.into(),
@@ -65,6 +68,12 @@ impl Searchable for Content {
     fn to_negative(&self) -> Result<String, Box<dyn Error>> {
         let result = self.negative.clone();
         info!("Content has created negative: {}", &result);
+        Ok(result)
+    }
+
+    fn to_regexp(&self) -> Result<String, Box<dyn Error>> {
+        let result = self.regexp.clone();
+        info!("Content has created regexp: {}", &result);
         Ok(result)
     }
 

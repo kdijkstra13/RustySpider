@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use scraper::{Html, Selector};
 use crate::modules::types::{Content, WebFile};
+use regex::Regex;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CrawlersConfigs {
@@ -39,7 +40,12 @@ pub trait Crawler {
     fn find(&self, content: Content) -> Result<WebFile, Box<dyn Error>>;
 }
 
-fn filter_by_keywords(items: &[String], keywords: &str, keywords_neg: &str) -> Result<Vec<String>, Box<dyn Error>> {
+fn filter_by_keywords(
+    items: &[(String, String)],
+    keywords: &str,
+    keywords_neg: &str,
+    regexp: &str,
+) -> Result<Vec<(String, String)>, Box<dyn Error>> {
     let words: Vec<String> = keywords
         .split_whitespace()
         .map(|w| w.to_lowercase())
@@ -50,13 +56,27 @@ fn filter_by_keywords(items: &[String], keywords: &str, keywords_neg: &str) -> R
         .map(|w| w.to_lowercase())
         .collect();
 
+    let regex = if regexp.trim().is_empty() {
+        None
+    } else {
+        Some(Regex::new(regexp)?)
+    };
+
     let filtered = items
         .iter()
-        .filter(|s| {
-            let s_lower = s.to_lowercase();
-            let has_all_keywords = words.iter().all(|w| s_lower.contains(w));
-            let has_no_neg_keywords = neg_words.iter().all(|w| !s_lower.contains(w));
-            has_all_keywords && has_no_neg_keywords
+        .filter(|(link, title)| {
+            // Prefer matching against the visible title; fall back to the URL if
+            // the selector doesn't include text.
+            let haystack = if title.trim().is_empty() { link } else { title };
+            let haystack_lower = haystack.to_lowercase();
+
+            let has_all_keywords = words.iter().all(|w| haystack_lower.contains(w));
+            let has_no_neg_keywords = neg_words.iter().all(|w| !haystack_lower.contains(w));
+            let matches_regex = regex
+                .as_ref()
+                .map_or(true, |re| re.is_match(haystack));
+
+            has_all_keywords && has_no_neg_keywords && matches_regex
         })
         .cloned()
         .collect();
@@ -94,25 +114,34 @@ impl Crawler for TwoStageWeb {
         let parsed_html = Html::parse_document(&html);
         let links_sel = Selector::parse(self.first_stage_match.as_str())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
-        let mut url_strings: Vec<String> = Vec::new();
+        let mut links: Vec<(String, String)> = Vec::new();
+
         for a in parsed_html.select(&links_sel) {
             if let Some(href) = a.value().attr("href") {
                 if let Ok(resolved) = url.join(href) {
-                    url_strings.push(resolved.to_string());
+                    let title = a.value().attr("title").unwrap_or("").trim().to_string();
+                    links.push((resolved.to_string(), title));
                 }
             }
         }
         // Double check with keywords (also filter with negative keywords)
         let negative = content.to_negative()?;
-        let before_url_strings = url_strings.clone();
-        let url_strings = filter_by_keywords(&url_strings, &query, &negative)?;
-        info!("Before filtering: {}, after filtering: {}, with -'{}' and +'{}'", &before_url_strings.len(), &url_strings.len(), &negative, &query);
+        let regexp = content.to_regexp()?;
+        let before_links = links.clone();
+        let links = filter_by_keywords(&links, &query, &negative, &regexp)?;
+        info!(
+            "Before filtering: {}, after filtering: {}, with -'{}' and +'{}'",
+            &before_links.len(),
+            &links.len(),
+            &negative,
+            &query
+        );
 
         // Return no magnet link if there were no results
-        if url_strings.is_empty() {
+        if links.is_empty() {
             return Err("Nothing found in first stage.".into());
         };
-        let url_string = url_strings[0].clone();
+        let (url_string, _title) = links[0].clone();
         sleep(Duration::from_secs(self.wait));
         info!("Crawler fetches second stage url: {}", &url_string);
 

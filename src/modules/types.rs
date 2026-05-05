@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Clone, Display, Serialize)]
 #[display(
-    "{title} -({negative}) {first_prefix}{first:0digits$}{second_prefix}{second:0digits$} {postfix}"
+    "{title} -({negative}) regex(regexp) {first_prefix}{first:0digits$}{second_prefix}{second:0digits$} {postfix}"
 )]
 pub struct Content {
     pub(crate) title: String,
     pub(crate) negative: String,
+    pub(crate) regexp: String,
     pub(crate) first_prefix: String,
     pub(crate) first: u32,
     pub(crate) second_prefix: String,
